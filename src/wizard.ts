@@ -5,23 +5,19 @@ import {
   log,
   spinner,
   multiselect,
+  confirm,
   isCancel,
   cancel,
 } from '@clack/prompts';
 import { execa } from 'execa';
 import type { PackageKey, ProjectInfo, WizardResult } from './types.js';
 import { PACKAGE_CATALOG } from './packages/catalog.js';
-
-// ─── Node version requirements per target Angular major ───────────────────────
-// Source: .claude/docs/migration-paths.md
-
-const NODE_REQUIREMENTS: Partial<Record<number, string>> = {
-  16: '16.14.0',
-  17: '18.13.0',
-  18: '18.19.0',
-  19: '18.19.0',
-  20: '18.19.0',
-};
+import {
+  getInstalledPackageOptions,
+  NODE_REQUIREMENTS,
+  nodeSatisfies,
+  parsePackagesArg as parsePackagesArgValue,
+} from './wizard-utils.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -88,13 +84,17 @@ export async function runWizard(
   ];
   note(planLines.join('\n'), 'Migration Plan');
 
+  let confirmed = true;
+
   if (options.isDryRun) {
     outro('Dry-run complete. Re-run with --apply to execute the migration.');
+  } else {
+    confirmed = await confirmMigrationPlan();
   }
 
   return {
     selectedPackages,
-    confirmed: true,
+    confirmed,
     fromVersion: options.fromVersion,
     toVersion: options.toVersion,
   };
@@ -156,19 +156,6 @@ function checkNodeVersion(toVersion: number): {
   };
 }
 
-/** Simple semver gte without pulling in the full semver package. */
-function nodeSatisfies(current: string, required: string): boolean {
-  const parse = (v: string): [number, number, number] => {
-    const parts = v.split('.').map(Number);
-    return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
-  };
-  const [cMaj, cMin, cPat] = parse(current);
-  const [rMaj, rMin, rPat] = parse(required);
-  if (cMaj !== rMaj) return cMaj > rMaj;
-  if (cMin !== rMin) return cMin > rMin;
-  return cPat >= rPat;
-}
-
 async function checkGitStatus(projectPath: string): Promise<{
   label: string;
   level: 'success' | 'warn' | 'info';
@@ -196,21 +183,14 @@ async function checkGitStatus(projectPath: string): Promise<{
 // ─── Package multi-select ─────────────────────────────────────────────────────
 
 async function runPackageSelection(projectInfo: ProjectInfo): Promise<PackageKey[]> {
-  const installedNames = Object.keys(projectInfo.installedPackages);
+  const options = getInstalledPackageOptions(projectInfo);
 
-  const options = PACKAGE_CATALOG.map((entry) => {
-    const detectedPkg = entry.npmPackages.find((p) => installedNames.includes(p));
-    const version = detectedPkg ? projectInfo.installedPackages[detectedPkg] : undefined;
-    return {
-      value: entry.key,
-      label: entry.label,
-      hint: version ? `installed: ${version}` : 'not detected in package.json',
-    };
-  });
+  if (options.length === 0) {
+    log.info('No supported ecosystem packages detected. Core Angular migration only.');
+    return [];
+  }
 
-  const initialValues = PACKAGE_CATALOG
-    .filter((entry) => entry.npmPackages.some((p) => installedNames.includes(p)))
-    .map((entry) => entry.key);
+  const initialValues = options.map((option) => option.value);
 
   const result = await multiselect<PackageKey>({
     message:
@@ -228,28 +208,35 @@ async function runPackageSelection(projectInfo: ProjectInfo): Promise<PackageKey
   return result;
 }
 
+async function confirmMigrationPlan(): Promise<boolean> {
+  const result = await confirm({
+    message: 'Proceed with this migration plan?',
+    initialValue: false,
+  });
+
+  if (isCancel(result)) {
+    cancel('Migration cancelled.');
+    process.exit(0);
+  }
+
+  if (!result) {
+    outro('Migration cancelled. No files were changed.');
+  }
+
+  return result;
+}
+
 // ─── --packages flag parser ───────────────────────────────────────────────────
 
 function parsePackagesArg(packagesArg: string): PackageKey[] {
-  const validKeys = new Set(PACKAGE_CATALOG.map((e) => e.key));
-  const unknown: string[] = [];
+  const { selectedPackages, unknownKeys } = parsePackagesArgValue(packagesArg);
 
-  const parsed = packagesArg
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    .filter((key) => {
-      if (validKeys.has(key as PackageKey)) return true;
-      unknown.push(key);
-      return false;
-    }) as PackageKey[];
-
-  if (unknown.length > 0) {
+  if (unknownKeys.length > 0) {
     log.warn(
-      `Unknown package key(s) in --packages flag, ignored: ${unknown.join(', ')}\n` +
-        `  Valid keys: ${[...validKeys].join(', ')}`,
+      `Unknown package key(s) in --packages flag, ignored: ${unknownKeys.join(', ')}\n` +
+        `  Valid keys: ${PACKAGE_CATALOG.map((entry) => entry.key).join(', ')}`,
     );
   }
 
-  return parsed;
+  return selectedPackages;
 }

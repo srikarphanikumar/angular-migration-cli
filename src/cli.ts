@@ -78,12 +78,16 @@ async function run(projectPath: string, options: OptionValues): Promise<void> {
     validateVersionRange(fromVersion, toVersion);
 
     // ── Step 4: Run wizard ──────────────────────────────────────────────────
-    await runWizard(projectInfo, {
+    const wizardResult = await runWizard(projectInfo, {
       packagesArg: options.packages as string | undefined,
       fromVersion,
       toVersion,
       isDryRun,
     });
+
+    if (!wizardResult.confirmed) {
+      process.exit(0);
+    }
 
     // ── Step 5: Dry-run exits after wizard; apply continues to migration ────
     if (isDryRun) {
