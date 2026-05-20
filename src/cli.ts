@@ -3,6 +3,7 @@ import { Command, type OptionValues } from 'commander';
 import { outro } from '@clack/prompts';
 import { detectProject, DetectionError } from './detector.js';
 import { runWizard } from './wizard.js';
+import { runDemoMigration } from './demo.js';
 
 // Read version from package.json at runtime (not bundled)
 const require = createRequire(import.meta.url);
@@ -16,7 +17,7 @@ program
   .name('migrate-angular')
   .description(pkg.description)
   .version(pkg.version, '-v, --version', 'Print the installed version')
-  .argument('<project-path>', 'Path to the Angular project root to migrate')
+  .argument('[project-path]', 'Path to the Angular project root to migrate')
   .option(
     '--from <version>',
     'Source Angular major version — auto-detected from package.json if omitted',
@@ -53,16 +54,26 @@ Examples:
   $ migrate-angular ./my-app --from=12 --to=20 --apply
     `,
   )
-  .action(async (projectPath: string, options: OptionValues) => {
+  .action(async (projectPath: string | undefined, options: OptionValues) => {
     await run(projectPath, options);
   });
 
 // ─── Main action ─────────────────────────────────────────────────────────────
 
-async function run(projectPath: string, options: OptionValues): Promise<void> {
+async function run(projectPath: string | undefined, options: OptionValues): Promise<void> {
   const isDryRun = !(options.apply as boolean | undefined);
 
   try {
+    if (options.demo as boolean | undefined) {
+      await runDemoMigration(pkg.version);
+      process.exit(0);
+    }
+
+    if (!projectPath) {
+      program.error('missing required argument "project-path"');
+      return;
+    }
+
     // ── Step 1: Detect project ──────────────────────────────────────────────
     const projectInfo = detectProject(projectPath);
 

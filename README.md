@@ -43,10 +43,10 @@ migrate-angular ./my-app --from=8 --to=20
 ## Usage
 
 ```
-migrate-angular <project-path> [options]
+migrate-angular [project-path] [options]
 
 Arguments:
-  project-path               Path to the Angular project root
+  project-path               Path to the Angular project root (not required with --demo)
 
 Options:
   --from <version>           Source Angular major version (auto-detected if omitted)
@@ -56,7 +56,7 @@ Options:
   --skip-build               Skip build verification after each step
   --packages <list>          Comma-separated packages, skips the interactive wizard
                              e.g. --packages material,ngrx,rxjs
-  --demo                     Run a simulated migration without changing files
+  --demo                     Run a simulated migration without project files
   -v, --version              Print the installed version
   -h, --help                 Display help
 ```
@@ -68,6 +68,9 @@ Without `--apply`, the tool detects your project, runs the interactive wizard, a
 ```bash
 # Preview the migration plan (no files changed)
 migrate-angular ./my-app --from=8 --to=20
+
+# Preview the terminal UI without an Angular project
+migrate-angular --demo
 
 # Execute the migration
 migrate-angular ./my-app --from=8 --to=20 --apply
