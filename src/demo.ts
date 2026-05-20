@@ -69,39 +69,21 @@ function createDemoStep(fromVersion: number, toVersion: number): MigrationStep {
     label: `v${fromVersion} → v${toVersion}`,
     tasks: [
       {
-        label: 'Update @angular/core + @angular/cli',
+        label: 'Run update commands',
         run: async () => {
           await sleep(80);
         },
       },
       {
-        label: 'Update selected ecosystem packages',
+        label: 'Apply codemods',
         run: async () => {
           await sleep(70);
         },
       },
       {
-        label: 'Apply codemods',
+        label: `Verify and write migration-docs/v${fromVersion}-v${toVersion}-changes.md`,
         run: async () => {
           await sleep(90);
-        },
-      },
-      {
-        label: 'Build verification',
-        run: async () => {
-          await sleep(60);
-        },
-      },
-      {
-        label: 'Test verification',
-        run: async () => {
-          await sleep(60);
-        },
-      },
-      {
-        label: `Generate migration-docs/v${fromVersion}-v${toVersion}-changes.md`,
-        run: async () => {
-          await sleep(40);
         },
       },
     ],

@@ -30,17 +30,3 @@ export { detectProject, DetectionError } from './detector.js';
 // Package catalog
 export { PACKAGE_CATALOG, getCatalogEntry } from './packages/catalog.js';
 export type { PackageCatalogEntry } from './packages/catalog.js';
-
-// Display layer
-export { theme, symbols } from './display/theme.js';
-export {
-  divider,
-  formatDuration,
-  printError,
-  printFinalSummary,
-  printHeader,
-  printStepBanner,
-  printStepSummary,
-} from './display/messages.js';
-export { buildStepTaskList } from './display/tasks.js';
-export { OverallProgress } from './display/progress.js';

@@ -1,9 +1,9 @@
 import { createRequire } from 'node:module';
 import { Command, type OptionValues } from 'commander';
-import { outro } from '@clack/prompts';
 import { detectProject, DetectionError } from './detector.js';
 import { runWizard } from './wizard.js';
 import { runDemoMigration } from './demo.js';
+import { runMigration } from './runner.js';
 
 // Read version from package.json at runtime (not bundled)
 const require = createRequire(import.meta.url);
@@ -106,8 +106,11 @@ async function run(projectPath: string | undefined, options: OptionValues): Prom
       process.exit(0);
     }
 
-    // ── Phase 4+: Migration engine (coming soon) ────────────────────────────
-    outro('Phase 2 complete — migration engine coming in Phase 4.');
+    await runMigration(projectInfo, wizardResult, {
+      skipBuild: options.skipBuild as boolean | undefined,
+      skipTests: options.skipTests as boolean | undefined,
+      toolVersion: pkg.version,
+    });
     process.exit(0);
   } catch (err: unknown) {
     handleError(err);
