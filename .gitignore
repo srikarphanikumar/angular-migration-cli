@@ -1,0 +1,21 @@
+# Build output
+dist/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# Internal planning docs (not for public repo)
+.claude/docs/
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+
+# Local env
+.env
+.env.local
